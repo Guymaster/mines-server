@@ -1,16 +1,16 @@
 import { Schema, type } from "@colyseus/schema";
 
 export default class Player extends Schema {
-    @type("number") name: string;
+    @type("string") name: string;
     @type("number") score: number;
-    @type("number") color: string;
+    @type("string") color: string;
     @type("number") posX: number;
     @type("number") posY: number;
+    @type("boolean") isActive: boolean = true;
 
-    constructor(name: string, score: number, color: string){
+    constructor(name: string, color: string){
         super();
         this.name = name;
-        this.score = score;
         this.color = color;
     }
 }

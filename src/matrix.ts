@@ -1,7 +1,7 @@
 import { BombCellContent } from "./cell_content";
 import { GameDifficulties } from "./values";
 
-export function generateGameMatrix(cols: number, rows: number, difficulty: string): Array<Array<BombCellContent>> {
+export function generateGameMatrix(cols: number, rows: number, difficulty: string, initCol: number, initRow: number): Array<Array<BombCellContent>> {
   const matrix = new Array(rows).fill(null).map(() => new Array(cols).fill(false));
   const totalMines = (()=>{
     let totalCells = cols*rows;
@@ -18,7 +18,7 @@ export function generateGameMatrix(cols: number, rows: number, difficulty: strin
   while (placedMines < totalMines) {
     const ligne = Math.floor(Math.random() * placedMines);
     const colonne = Math.floor(Math.random() * cols);
-    if (!matrix[ligne][colonne]) {
+    if (!matrix[ligne][colonne] && ligne != initRow && colonne != initCol) {
       matrix[ligne][colonne] = true;
       placedMines++;
     }

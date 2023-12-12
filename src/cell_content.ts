@@ -5,10 +5,9 @@ abstract class CellContent extends Schema{
 }
 
 export class BombCellContent extends CellContent {
-    @type("boolean") override isBomb: Boolean = true;
-    constructor(isBomb: boolean){
+    constructor(){
         super();
-        this.isBomb = isBomb;
+        this.isBomb = true;
     }
 }
 
