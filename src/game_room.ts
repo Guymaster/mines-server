@@ -4,13 +4,15 @@ import { IncomingMessage } from "http";
 import Player from "./player";
 import { BombCellContent, NumberCellContent } from "./cell_content";
 import { AvailablePlayerColors, ClientMessagesTypes, GameSteps, ServerErrorTypes, ServerMessagesTypes } from "./values";
-import { generateGameMatrix, getCellNeighboursKeys } from "./matrix";
+import { generateGameMatrix, getAllContentsFromMatrix, getCellNeighboursKeys } from "./matrix";
 import { GameplayConfig } from "./configs";
+import { Broadcaster } from "./messages";
 
 type GameOptions = {
     rows: number,
     cols: number,
-    difficulty: string
+    difficulty: string,
+    watchOut: boolean
 };
 
 type ClientOptions = {
@@ -22,13 +24,15 @@ export default class GameRoom extends Room<GameRoomState> {
     rows: number;
     cols: number;
     difficulty: string;
-    matrix: Array<Array<BombCellContent>> = [];
+    matrix: Array<Array<Boolean>> = [];
+    watchOut: boolean;
     takenColors: Array<number> = [];
     // When room is initialized
     onCreate (options: GameOptions) {
         this.rows = options.rows;
         this.cols = options.cols;
         this.difficulty =  options.difficulty;
+        this.watchOut = options.watchOut;
         this.setState(new GameRoomState());
         this.state.step = GameSteps.PLAYING;
         this.onMessage(ClientMessagesTypes.CHOOSE_CELL, (client, message) => {
@@ -63,7 +67,7 @@ export default class GameRoom extends Room<GameRoomState> {
     // When client successfully join the room
     onJoin (client: Client, options: any, auth: any) {
         if(![...this.state.players.keys()].includes(client.sessionId)){
-            this.state.players.set(client.sessionId, new Player(auth.name, AvailablePlayerColors[auth.color]));
+            this.state.players.set(client.sessionId, new Player(auth.name, AvailablePlayerColors[auth.color], client.sessionId));
         }
         else{
             this.state.players.get(client.sessionId)!.isActive = true;
@@ -92,10 +96,11 @@ export default class GameRoom extends Room<GameRoomState> {
 
     revealCell(col: number, row: number, player: Player | null){
         let revealedCell = this.matrix[row][col];
-        if(revealedCell.isBomb){  
-            //TODO Broadcast END
-            //TODO Broadcast all contents
+        if(revealedCell){
+            this.state.revealedContents = getAllContentsFromMatrix(this.matrix);
+            Broadcaster.bombRevealed(this, row, col, player!.id);
             this.state.step = GameSteps.ENDED;
+            Broadcaster.gameEnded(this);
             return;
         }
         let neighbours = getCellNeighboursKeys(col, row, this.cols, this.rows);
@@ -105,8 +110,11 @@ export default class GameRoom extends Room<GameRoomState> {
                 neighbourBombs++;
             }
         }
-        //TODO Broadcast reveal
         this.state.revealedContents.set({row: row, col: col}, new NumberCellContent(neighbourBombs));
+        if(player){
+            this.state.players.get(player.id)!.score += neighbourBombs;
+        }
+        Broadcaster.numberRevealed(this, row, col, neighbourBombs, player? player.id : null);
     }
 }
 

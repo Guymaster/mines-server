@@ -1,6 +1,6 @@
 import { Schema, type } from "@colyseus/schema";
 
-abstract class CellContent extends Schema{
+export abstract class CellContent extends Schema{
     @type("boolean") isBomb: Boolean = false;
 }
 
