@@ -14,7 +14,8 @@ export abstract class Broadcaster {
         room.broadcast(ServerMessagesTypes.NUMBER_REVEALED, {
             playerId: playerId,
             row,
-            col
+            col,
+            number: number
         });
     }
     static gameEnded(room: GameRoom){

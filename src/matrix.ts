@@ -1,8 +1,8 @@
-import { BombCellContent, CellContent, NumberCellContent } from "./cell_content";
+import { CellContent } from "./cell_content";
 import { GameDifficulties } from "./values";
 
 export function generateGameMatrix(cols: number, rows: number, difficulty: string, initCol: number, initRow: number): Array<Array<Boolean>> {
-  const matrix = new Array(rows).fill(null).map(() => new Array(cols).fill(false));
+  let matrix = new Array(rows).fill(null).map(() => new Array(cols).fill(false));
   const totalMines = (()=>{
     let totalCells = cols*rows;
     switch(difficulty){
@@ -23,29 +23,28 @@ export function generateGameMatrix(cols: number, rows: number, difficulty: strin
       placedMines++;
     }
   }
-
   return matrix;
 }
 
-export function getAllContentsFromMatrix(matrix: Array<Array<Boolean>>): Map<{row: number, col: number}, BombCellContent> {
-    let contents = new Map<{row: number, col: number}, BombCellContent>();
+export function getAllContentsFromMatrix(matrix: Array<Array<Boolean>>): Map<string, CellContent> {
+    let contents = new Map<string, CellContent>();
     for(let i=0; i<matrix.length; i++){
         for(let j=0; j<matrix[i].length; j++){
             let content: CellContent;
             if(matrix[i][j]){
-                content = new BombCellContent();
+                content = CellContent.bomb();
             }
             else{
-                let neighbours = getCellNeighboursKeys(j, i, matrix[i].length, matrix.length);
+                let neighbours = getCellNeighboursKeys(j, i, matrix[i].length - 1, matrix.length - 1);
                 let neighbourBombs = 0;
-                for(let i=0; i<neighbours.length; i++){
-                    if(matrix[neighbours[i].row][neighbours[i].col]){
+                for(let k=0; k<neighbours.length; k++){
+                    if(matrix[neighbours[k].row][neighbours[k].col]){
                         neighbourBombs++;
                     }
                 }
-                content = new NumberCellContent(neighbourBombs);
+                content = CellContent.number(neighbourBombs);
             }
-            contents.set({row: i, col: j}, content);
+            contents.set(`${i}:${j}`, content);
         }
     }
     return contents;

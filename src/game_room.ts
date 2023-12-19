@@ -2,8 +2,8 @@ import { Schema, type } from "@colyseus/schema";
 import { Client, Room, ServerError } from "colyseus";
 import { IncomingMessage } from "http";
 import Player from "./player";
-import { BombCellContent, NumberCellContent } from "./cell_content";
-import { AvailablePlayerColors, ClientMessagesTypes, GameSteps, ServerErrorTypes, ServerMessagesTypes } from "./values";
+import { CellContent } from "./cell_content";
+import { AvailablePlayerColors, ClientMessagesTypes, GameDifficulties, GameSteps, ServerErrorTypes, ServerMessagesTypes } from "./values";
 import { generateGameMatrix, getAllContentsFromMatrix, getCellNeighboursKeys } from "./matrix";
 import { GameplayConfig } from "./configs";
 import { Broadcaster } from "./messages";
@@ -23,24 +23,27 @@ type ClientOptions = {
 export default class GameRoom extends Room<GameRoomState> {
     rows: number;
     cols: number;
-    difficulty: string;
+    difficulty: string = GameDifficulties.BEGINNER;
     matrix: Array<Array<Boolean>> = [];
-    watchOut: boolean;
+    watchOut: boolean = false;
     takenColors: Array<number> = [];
     // When room is initialized
     onCreate (options: GameOptions) {
-        this.rows = options.rows;
-        this.cols = options.cols;
-        this.difficulty =  options.difficulty;
+        this.rows = options.rows? options.rows : 5;
+        this.cols = options.cols? options.cols : 5;
+        this.difficulty =  options.difficulty? options.difficulty : GameDifficulties.BEGINNER;
         this.watchOut = options.watchOut;
         this.setState(new GameRoomState());
         this.state.step = GameSteps.PLAYING;
         this.onMessage(ClientMessagesTypes.CHOOSE_CELL, (client, message) => {
-            if(message.col >= this.cols || message.col < 0 || message.col >= this.rows || message.row){
+            if(message.col >= this.cols || message.col < 0 || message.col >= this.rows || message.row >= this.rows){
                 return;
             }
             if(this.matrix.length == 0){
                 this.revealStartingBlock(message.col, message.row);
+            }
+            else{
+                this.revealCell(message.col, message.row, this.state.players.get(client.sessionId)!);
             }
         });
     }
@@ -95,6 +98,9 @@ export default class GameRoom extends Room<GameRoomState> {
     }
 
     revealCell(col: number, row: number, player: Player | null){
+        if(this.state.revealedContents.get(`${row}:${col}`) != undefined){
+            return;
+        }
         let revealedCell = this.matrix[row][col];
         if(revealedCell){
             this.state.revealedContents = getAllContentsFromMatrix(this.matrix);
@@ -103,16 +109,16 @@ export default class GameRoom extends Room<GameRoomState> {
             Broadcaster.gameEnded(this);
             return;
         }
-        let neighbours = getCellNeighboursKeys(col, row, this.cols, this.rows);
+        let neighbours = getCellNeighboursKeys(col, row, this.cols - 1, this.rows - 1);
         let neighbourBombs = 0;
         for(let i=0; i<neighbours.length; i++){
             if(this.matrix[neighbours[i].row][neighbours[i].col]){
                 neighbourBombs++;
             }
         }
-        this.state.revealedContents.set({row: row, col: col}, new NumberCellContent(neighbourBombs));
+        this.state.revealedContents.set(`${row}:${col}`, CellContent.number(neighbourBombs));
         if(player){
-            this.state.players.get(player.id)!.score += neighbourBombs;
+            this.state.players.get(player.id)!.score = this.state.players.get(player.id)!.score + neighbourBombs;
         }
         Broadcaster.numberRevealed(this, row, col, neighbourBombs, player? player.id : null);
     }
@@ -122,6 +128,6 @@ export class GameRoomState extends Schema {
     @type({
         map: Player
     }) players: Map<string, Player> = new Map<string, Player>();
-    @type({map: BombCellContent}) revealedContents = new Map<{row: number, col: number}, BombCellContent>();
+    @type({map: CellContent}) revealedContents = new Map<string, CellContent>();
     @type("string") step: string = GameSteps.WAITING;
 }
