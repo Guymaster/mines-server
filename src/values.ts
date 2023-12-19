@@ -11,7 +11,8 @@ export const GameDifficulties = {
 };
 
 export const ClientMessagesTypes = {
-    CHOOSE_CELL: "CHOOSE_CELL"
+    CHOOSE_CELL: "CHOOSE_CELL",
+    CURSOR_POSITION: "CURSOR_POSITION"
 };
 
 export const ServerMessagesTypes = {

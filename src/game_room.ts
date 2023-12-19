@@ -46,6 +46,10 @@ export default class GameRoom extends Room<GameRoomState> {
                 this.revealCell(message.col, message.row, this.state.players.get(client.sessionId)!);
             }
         });
+        this.onMessage(ClientMessagesTypes.CURSOR_POSITION, (client, message) => {
+            this.state.players.get(client.sessionId)!.posX = message.posX;
+            this.state.players.get(client.sessionId)!.posY = message.posY;
+        });
     }
 
     // Authorize client based on provided options before WebSocket handshake is complete
