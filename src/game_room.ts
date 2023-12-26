@@ -1,5 +1,5 @@
 import { Schema, type } from "@colyseus/schema";
-import { Client, Room, ServerError } from "colyseus";
+import { Client, Delayed, Room, ServerError } from "colyseus";
 import { IncomingMessage } from "http";
 import Player from "./player";
 import { CellContent } from "./cell_content";
@@ -21,6 +21,7 @@ type ClientOptions = {
 };
 
 export default class GameRoom extends Room<GameRoomState> {
+    public delayedInterval!: Delayed;
     rows: number;
     cols: number;
     difficulty: string = GameDifficulties.BEGINNER;
@@ -50,6 +51,9 @@ export default class GameRoom extends Room<GameRoomState> {
             this.state.players.get(client.sessionId)!.posX = message.posX;
             this.state.players.get(client.sessionId)!.posY = message.posY;
         });
+        this.delayedInterval = this.clock.setInterval(() => {
+            this.state.count++;
+        }, 1000);
     }
 
     // Authorize client based on provided options before WebSocket handshake is complete
@@ -136,6 +140,7 @@ export class GameRoomState extends Schema {
     @type("string") step: string = GameSteps.WAITING;
     @type("int8") cols: number;
     @type("int8") rows: number;
+    @type("int32") count: number = 0;
     constructor(rows: number, cols: number){
         super();
         this.rows = rows;
