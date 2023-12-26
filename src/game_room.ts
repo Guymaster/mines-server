@@ -33,7 +33,7 @@ export default class GameRoom extends Room<GameRoomState> {
         this.cols = options.cols? options.cols : 5;
         this.difficulty =  options.difficulty? options.difficulty : GameDifficulties.BEGINNER;
         this.watchOut = options.watchOut;
-        this.setState(new GameRoomState());
+        this.setState(new GameRoomState(options.rows, options.cols));
         this.state.step = GameSteps.PLAYING;
         this.onMessage(ClientMessagesTypes.CHOOSE_CELL, (client, message) => {
             if(message.col >= this.cols || message.col < 0 || message.col >= this.rows || message.row >= this.rows){
@@ -59,22 +59,22 @@ export default class GameRoom extends Room<GameRoomState> {
         }
         return {
             authId: client.sessionId,
-            color: (!options.color || isNaN(options.color) || !Number.isInteger(options.color) || options.color >= AvailablePlayerColors.length)? (()=>{
+            color: (!options.color)? (()=>{
                 for(let i=0; i<AvailablePlayerColors.length; i++){
                     if(!this.takenColors.includes(i)){
                         this.takenColors.push(i);
-                        return i;
+                        return AvailablePlayerColors[i];
                     }
                 }
             })() : options.color,
-            name: (!options.name || this.state.players.size == GameplayConfig.MAX_PLAYERS || options.name.length>20 || ([...this.state.players.keys()].includes(options.name) && this.state.players.get(options.name)?.isActive))? `Player ${this.state.players.size + 1}` : options.name
+            name: (!options.name)? `Player ${this.state.players.size + 1}` : options.name
         };
     }
 
     // When client successfully join the room
-    onJoin (client: Client, options: any, auth: any) {
+    onJoin (client: Client, options: any, auth: any) {console.log("JOIN WiTH: ", options, auth)
         if(![...this.state.players.keys()].includes(client.sessionId)){
-            this.state.players.set(client.sessionId, new Player(auth.name, AvailablePlayerColors[auth.color], client.sessionId));
+            this.state.players.set(client.sessionId, new Player(auth.name, auth.color, client.sessionId));
         }
         else{
             this.state.players.get(client.sessionId)!.isActive = true;
@@ -134,4 +134,11 @@ export class GameRoomState extends Schema {
     }) players: Map<string, Player> = new Map<string, Player>();
     @type({map: CellContent}) revealedContents = new Map<string, CellContent>();
     @type("string") step: string = GameSteps.WAITING;
+    @type("int8") cols: number;
+    @type("int8") rows: number;
+    constructor(rows: number, cols: number){
+        super();
+        this.rows = rows;
+        this.cols = cols;
+    }
 }

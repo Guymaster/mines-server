@@ -27,8 +27,8 @@ export const ServerErrorTypes = {
 };
 
 export const AvailablePlayerColors = [
-    "C0",
-    "C1",
-    "C2",
-    "C3",
+    "BLUE",
+    "RED",
+    "GREEN",
+    "YELLOW",
 ];
