@@ -16,7 +16,7 @@ export function generateGameMatrix(cols: number, rows: number, difficulty: strin
   })();
   let placedMines = 0;
   while (placedMines < totalMines) {
-    const ligne = Math.floor(Math.random() * placedMines);
+    const ligne = Math.floor(Math.random() * rows);
     const colonne = Math.floor(Math.random() * cols);
     if (!matrix[ligne][colonne] && ligne != initRow && colonne != initCol) {
       matrix[ligne][colonne] = true;

@@ -37,7 +37,7 @@ export default class GameRoom extends Room<GameRoomState> {
         this.setState(new GameRoomState(options.rows, options.cols));
         this.state.step = GameSteps.PLAYING;
         this.onMessage(ClientMessagesTypes.CHOOSE_CELL, (client, message) => {
-            if(message.col >= this.cols || message.col < 0 || message.col >= this.rows || message.row >= this.rows){
+            if(message.col >= this.cols || message.col < 0 || message.row >= this.rows || message.row < 0){
                 return;
             }
             if(this.matrix.length == 0){
@@ -110,6 +110,7 @@ export default class GameRoom extends Room<GameRoomState> {
             return;
         }
         let revealedCell = this.matrix[row][col];
+        console.log("REVEALED CELL: ", revealedCell)
         if(revealedCell){
             this.state.revealedContents = getAllContentsFromMatrix(this.matrix);
             Broadcaster.bombRevealed(this, row, col, player!.id);
