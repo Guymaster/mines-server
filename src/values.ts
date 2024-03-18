@@ -12,7 +12,10 @@ export const GameDifficulties = {
 
 export const ClientMessagesTypes = {
     CHOOSE_CELL: "CHOOSE_CELL",
-    CURSOR_POSITION: "CURSOR_POSITION"
+    CURSOR_POSITION: "CURSOR_POSITION",
+    NEXT_GAME: "NEXT_GAME",
+    ADD_FLAG_TO_CELL: "ADD_FLAG_TO_CELL",
+    REMOVE_FLAG_TO_CELL: "REMOVE_FLAG_TO_CELL"
 };
 
 export const ServerMessagesTypes = {
@@ -32,3 +35,5 @@ export const AvailablePlayerColors = [
     "GREEN",
     "YELLOW",
 ];
+
+export const LOBBY_ID_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ123456789";

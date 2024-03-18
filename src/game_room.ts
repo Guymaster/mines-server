@@ -3,7 +3,7 @@ import { Client, Delayed, Room, ServerError } from "colyseus";
 import { IncomingMessage } from "http";
 import Player from "./player";
 import { CellContent } from "./cell_content";
-import { AvailablePlayerColors, ClientMessagesTypes, GameDifficulties, GameSteps, ServerErrorTypes, ServerMessagesTypes } from "./values";
+import { AvailablePlayerColors, ClientMessagesTypes, GameDifficulties, GameSteps, LOBBY_ID_CHARS, ServerErrorTypes, ServerMessagesTypes } from "./values";
 import { generateGameMatrix, getAllContentsFromMatrix, getCellNeighboursKeys } from "./matrix";
 import { GameplayConfig } from "./configs";
 import { Broadcaster } from "./messages";
@@ -21,6 +21,7 @@ type ClientOptions = {
 };
 
 export default class GameRoom extends Room<GameRoomState> {
+    LOBBY_CHANNEL = "$LOBBYCHANNEL";
     public delayedInterval!: Delayed;
     rows: number;
     cols: number;
@@ -29,7 +30,10 @@ export default class GameRoom extends Room<GameRoomState> {
     watchOut: boolean = false;
     takenColors: Array<number> = [];
     // When room is initialized
-    onCreate (options: GameOptions) {
+    async onCreate (options: GameOptions) {
+        this.autoDispose = true;
+        this.roomId = await this.generateRoomId();
+        this.maxClients = 4;
         this.rows = options.rows? options.rows : 5;
         this.cols = options.cols? options.cols : 5;
         this.difficulty =  options.difficulty? options.difficulty : GameDifficulties.BEGINNER;
@@ -51,8 +55,27 @@ export default class GameRoom extends Room<GameRoomState> {
             this.state.players.get(client.sessionId)!.posX = message.posX;
             this.state.players.get(client.sessionId)!.posY = message.posY;
         });
+        this.onMessage(ClientMessagesTypes.NEXT_GAME, (client, message) => {
+            if(this.state.step != GameSteps.ENDED || this.state.nextRoomId.length != 0){
+                return;
+            }
+            this.state.nextRoomId = message.roomId
+        });
+        this.onMessage(ClientMessagesTypes.ADD_FLAG_TO_CELL, (client, message) => {
+            if(this.state.step != GameSteps.ENDED){
+                return;
+            }
+            let row = message.row;
+            let col = message.col;
+        });
+        this.onMessage(ClientMessagesTypes.REMOVE_FLAG_TO_CELL, (client, message) => {
+            if(this.state.step != GameSteps.ENDED){
+                return;
+            }
+            this.state.nextRoomId = message.roomId
+        });
         this.delayedInterval = this.clock.setInterval(() => {
-            this.state.count++;
+            if(this.state.step == GameSteps.PLAYING) this.state.count++;
         }, 1000);
     }
 
@@ -89,6 +112,9 @@ export default class GameRoom extends Room<GameRoomState> {
     async onLeave (client: Client, consented: boolean) {
         this.state.players.get(client.sessionId)!.isActive = false;
         try {
+            if(consented){
+                throw new Error("Client left the game");
+            }
             await this.allowReconnection(client, "manual");
             this.state.players.get(client.sessionId)!.isActive = true;
 
@@ -98,7 +124,9 @@ export default class GameRoom extends Room<GameRoomState> {
     }
 
     // Cleanup callback, called after there are no more clients in the room. (see `autoDispose`)
-    onDispose () { }
+    async onDispose () {
+        this.presence.srem(this.LOBBY_CHANNEL, this.roomId);
+    }
 
     revealStartingBlock(col: number, row: number){
         this.matrix = generateGameMatrix(this.cols, this.rows, this.difficulty, col, row);
@@ -130,7 +158,41 @@ export default class GameRoom extends Room<GameRoomState> {
             this.state.players.get(player.id)!.score = this.state.players.get(player.id)!.score + neighbourBombs;
         }
         Broadcaster.numberRevealed(this, row, col, neighbourBombs, player? player.id : null);
+        if(neighbourBombs == 0){
+            neighbours.forEach(cell => {
+                this.revealCell(cell.col, cell.row, player);
+            });
+        }
     }
+
+    generateRoomIdSingle(): string {
+        let result = '';
+        for (var i = 0; i < 6; i++) {
+            result += LOBBY_ID_CHARS.charAt(Math.floor(Math.random() * LOBBY_ID_CHARS.length));
+        }
+        return result;
+    }
+    async generateRoomId(): Promise<string> {
+        const currentIds = await this.presence.smembers(this.LOBBY_CHANNEL);
+        let id;
+        do {
+            id = this.generateRoomIdSingle();
+        } while (currentIds.includes(id));
+
+        await this.presence.sadd(this.LOBBY_CHANNEL, id);
+        return id;
+    }
+    // addFlag(playerId: string, row: number, col: number){
+    //     if(this.state.flags.get(`${row}:${col}`)!.find()){
+    //         return;
+    //     }
+    //     this.flags.push(playerId);
+    // }
+    // removeFlag(playerId: string, row: number, col: number){
+    //     this.flags = this.flags.filter(value => (value != playerId));
+    // }
+
+
 }
 
 export class GameRoomState extends Schema {
@@ -138,10 +200,12 @@ export class GameRoomState extends Schema {
         map: Player
     }) players: Map<string, Player> = new Map<string, Player>();
     @type({map: CellContent}) revealedContents = new Map<string, CellContent>();
+    @type({map: CellContent}) flags = new Map<string, Array<string>>();
     @type("string") step: string = GameSteps.WAITING;
     @type("int8") cols: number;
     @type("int8") rows: number;
     @type("int32") count: number = 0;
+    @type("string") nextRoomId: string = "";
     constructor(rows: number, cols: number){
         super();
         this.rows = rows;
