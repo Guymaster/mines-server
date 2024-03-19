@@ -21,4 +21,4 @@ const gameServer = new Server({
 
 gameServer.define("CLASSIC", GameRoom);
 
-gameServer.listen(port);
+gameServer.listen(port, "0.0.0.0");
